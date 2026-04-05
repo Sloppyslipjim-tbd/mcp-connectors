@@ -1,0 +1,67 @@
+version: "3.8"
+
+# Master Docker Compose - All Buddy MCP Connectors
+# The Brands Den B.V.
+#
+# Usage:
+#   docker-compose up -d           # Start all connectors
+#   docker-compose up -d fivex     # Start just FiveX
+#   docker-compose logs -f         # View logs
+#   docker-compose down            # Stop all
+
+services:
+  fivex:
+    build: ./fivex-mcp-server
+    container_name: fivex-mcp
+    ports:
+      - "3001:3001"
+    env_file: ./fivex-mcp-server/.env
+    restart: unless-stopped
+
+  bolcom-retailer:
+    build: ./bolcom-retailer-mcp-server
+    container_name: bolcom-retailer-mcp
+    ports:
+      - "3002:3002"
+    env_file: ./bolcom-retailer-mcp-server/.env
+    restart: unless-stopped
+
+  returnless:
+    build: ./returnless-mcp-server
+    container_name: returnless-mcp
+    ports:
+      - "3003:3003"
+    env_file: ./returnless-mcp-server/.env
+    restart: unless-stopped
+
+  mirakl:
+    build: ./mirakl-mcp-server
+    container_name: mirakl-mcp
+    ports:
+      - "3004:3004"
+    env_file: ./mirakl-mcp-server/.env
+    restart: unless-stopped
+
+  channeldock:
+    build: ./channeldock-mcp-server
+    container_name: channeldock-mcp
+    ports:
+      - "3005:3005"
+    env_file: ./channeldock-mcp-server/.env
+    restart: unless-stopped
+
+  bolcom-advertising:
+    build: ./bolcom-advertising-mcp-server
+    container_name: bolcom-advertising-mcp
+    ports:
+      - "3006:3006"
+    env_file: ./bolcom-advertising-mcp-server/.env
+    restart: unless-stopped
+
+  import4you:
+    build: ./import4you-mcp-server
+    container_name: import4you-mcp
+    ports:
+      - "3007:3007"
+    env_file: ./import4you-mcp-server/.env
+    restart: unless-stopped
