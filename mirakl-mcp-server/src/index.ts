@@ -30,7 +30,7 @@ const sessions = new Map<string, { transport: StreamableHTTPServerTransport; ser
 function createServer(): McpServer {
   const server = new McpServer(
     { name: "mirakl-mcp-server", version: "1.0.0" },
-    { instructions: "Mirakl marketplace connector for The Brands Den B.V. Covers Decathlon, ANWB, and MediaMarkt NL. Known issue: 401 errors reported — auth tokens may need verification." }
+    { instructions: "Mirakl marketplace connector for The Brands Den B.V. Covers Decathlon, ANWB, and MediaMarkt NL. Known issue: 401 errors reported â auth tokens may need verification." }
   );
 
   const marketplaceField = z.string().describe("Marketplace: decathlon, anwb, or mediamarkt");
@@ -95,7 +95,9 @@ function createServer(): McpServer {
 }
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  exposedHeaders: ['Mcp-Session-Id'],
+}));
 app.use(express.json());
 
 app.get("/health", (_req, res) => {
@@ -135,6 +137,6 @@ app.delete("/mcp", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 Mirakl MCP Server running on http://localhost:${PORT}`);
+  console.log(`\nð Mirakl MCP Server running on http://localhost:${PORT}`);
   console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`);
 });

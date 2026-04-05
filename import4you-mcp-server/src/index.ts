@@ -15,7 +15,7 @@ if (!CLIENT_ID) {
   process.exit(1);
 }
 
-console.warn("⚠️  Import4you API endpoints are provisional — verify with I4Y documentation.");
+console.warn("â ï¸  Import4you API endpoints are provisional â verify with I4Y documentation.");
 
 const client = new Import4youClient(BASE_URL, CLIENT_ID);
 
@@ -62,7 +62,9 @@ function createServer(): McpServer {
 }
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  exposedHeaders: ['Mcp-Session-Id'],
+}));
 app.use(express.json());
 
 app.get("/health", (_req, res) => {
@@ -102,6 +104,6 @@ app.delete("/mcp", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 Import4you MCP Server running on http://localhost:${PORT}`);
+  console.log(`\nð Import4you MCP Server running on http://localhost:${PORT}`);
   console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`);
 });

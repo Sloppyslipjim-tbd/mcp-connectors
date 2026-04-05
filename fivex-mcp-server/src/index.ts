@@ -1,5 +1,5 @@
 /**
- * FiveX MCP Server — Remote Streamable HTTP transport
+ * FiveX MCP Server â Remote Streamable HTTP transport
  *
  * Exposes FiveX Analytics API as MCP tools for Claude:
  *   - get_orders: Fetch orders with date/channel filters
@@ -9,7 +9,7 @@
  *   - get_sales_by_channel: Channel breakdown for a date range
  *
  * Deploy as a public HTTPS endpoint, then add to Claude via:
- *   Settings → Connectors → Add custom connector → paste URL
+ *   Settings â Connectors â Add custom connector â paste URL
  */
 
 import { randomUUID } from "node:crypto";
@@ -20,7 +20,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { z } from "zod";
 import { FiveXClient } from "./fivex-client.js";
 
-// ── Config ──
+// ââ Config ââ
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
 const FIVEX_API_KEY = process.env.FIVEX_API_KEY ?? "";
@@ -39,7 +39,7 @@ const fivex = new FiveXClient({
   baseUrl: FIVEX_BASE_URL,
 });
 
-// ── Session management ──
+// ââ Session management ââ
 
 const sessions = new Map<
   string,
@@ -62,7 +62,7 @@ function createServer(): McpServer {
     {
       instructions: `FiveX Analytics MCP server for The Brands Den B.V.
 Provides access to e-commerce order data, returns, and product information across all sales channels (Bol.com, Amazon, MediaMarkt, Decathlon, ANWB, Shopify).
-Currency is EUR. Use Dutch notation (€ 1.234,56).
+Currency is EUR. Use Dutch notation (â¬ 1.234,56).
 Date format: YYYY-MM-DD.
 Known limitation: FiveX ignores date parameters server-side, so filtering is done client-side after fetching all data. This means queries for recent dates may take a moment as all orders are paginated through.`,
     }
@@ -81,7 +81,9 @@ Known limitation: FiveX ignores date parameters server-side, so filtering is don
   return server;
 }
 
-const app=express();app.use(cors());app.use(express.json());
+const app=express();app.use(cors({
+  exposedHeaders: ['Mcp-Session-Id'],
+}));app.use(express.json());
 app.get("/health",(_req,res)=>{res.json({status:"ok",server:"fivex-mcp-server",version:"1.0.0"})});
 
 app.post("/mcp",async(req,res)=>{try{const sessionId=req.headers["mcp-session-id"] as string|undefined;if(sessionId&&sessions.has(sessionId)){await sessions.get(sessionId)!.transport.handleRequest(req,res,req.body);return}const server=createServer();const transport=new StreamableHTTPServerTransport({sessionIdGenerator:()=>randomUUID()});transport.onclose=()=>{const sid=transport.sessionId;if(sid)sessions.delete(sid)};await server.connect(transport);const sid=transport.sessionId;if(sid)sessions.set(sid,{transport,server});await transport.handleRequest(req,res,req.body)}catch(err){if(!res.headersSent)res.status(500).json({error:String(err)})}});
@@ -90,4 +92,4 @@ app.get("/mcp",async(req,res)=>{const sessionId=req.headers["mcp-session-id"] as
 
 app.delete("/mcp",async(req,res)=>{const sessionId=req.headers["mcp-session-id"] as string|undefined;if(!sessionId||!sessions.has(sessionId)){res.status(400).json({error:"Invalid session"});return}await sessions.get(sessionId)!.transport.handleRequest(req,res);sessions.delete(sessionId)});
 
-app.listen(PORT,()=>{console.log(`\n🚀 FiveX MCP Server running on http://localhost:${PORT}`);console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`)});
+app.listen(PORT,()=>{console.log(`\nð FiveX MCP Server running on http://localhost:${PORT}`);console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`)});

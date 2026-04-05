@@ -75,7 +75,9 @@ function createServer(): McpServer {
 }
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  exposedHeaders: ['Mcp-Session-Id'],
+}));
 app.use(express.json());
 
 app.get("/health", (_req, res) => {
@@ -115,6 +117,6 @@ app.delete("/mcp", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 Bol.com Advertising MCP Server running on http://localhost:${PORT}`);
+  console.log(`\nð Bol.com Advertising MCP Server running on http://localhost:${PORT}`);
   console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`);
 });

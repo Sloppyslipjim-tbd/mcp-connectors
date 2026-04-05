@@ -16,7 +16,7 @@ if (!API_KEY || !API_SECRET) {
   process.exit(1);
 }
 
-console.warn("⚠️  KNOWN ISSUE: ChannelDock API may return HTML instead of JSON. Support has been emailed.");
+console.warn("â ï¸  KNOWN ISSUE: ChannelDock API may return HTML instead of JSON. Support has been emailed.");
 
 const client = new ChannelDockClient(API_KEY, API_SECRET, BASE_URL);
 
@@ -25,7 +25,7 @@ const sessions = new Map<string, { transport: StreamableHTTPServerTransport; ser
 function createServer(): McpServer {
   const server = new McpServer(
     { name: "channeldock-mcp-server", version: "1.0.0" },
-    { instructions: "ChannelDock multi-channel order/inventory management for The Brands Den B.V. Known issue: API may return HTML instead of JSON — support has been contacted." }
+    { instructions: "ChannelDock multi-channel order/inventory management for The Brands Den B.V. Known issue: API may return HTML instead of JSON â support has been contacted." }
   );
 
   server.registerTool("get_orders", {
@@ -87,7 +87,9 @@ function createServer(): McpServer {
 }
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  exposedHeaders: ['Mcp-Session-Id'],
+}));
 app.use(express.json());
 
 app.get("/health", (_req, res) => {
@@ -127,6 +129,6 @@ app.delete("/mcp", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 ChannelDock MCP Server running on http://localhost:${PORT}`);
+  console.log(`\nð ChannelDock MCP Server running on http://localhost:${PORT}`);
   console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`);
 });
