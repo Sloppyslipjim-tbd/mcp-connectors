@@ -15,7 +15,7 @@ if (!CLIENT_ID) {
   process.exit(1);
 }
 
-console.warn("ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ ÃÂÃÂ¯ÃÂÃÂ¸ÃÂÃÂ  Import4you API endpoints are provisional ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ verify with I4Y documentation.");
+console.warn("ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ ÃÂÃÂÃÂÃÂ¯ÃÂÃÂÃÂÃÂ¸ÃÂÃÂÃÂÃÂ  Import4you API endpoints are provisional ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ verify with I4Y documentation.");
 
 const client = new Import4youClient(BASE_URL, CLIENT_ID);
 
@@ -65,8 +65,8 @@ const app = express();
 app.use(cors({
   exposedHeaders: ['Mcp-Session-Id'],
 }));
-app.use(express.json());
-app.use("/mcp",(req:any,_r:any,n:any)=>{req.headers.accept="application/json, text/event-stream";n()});
+app.use(express.json());app.use("/mcp",(req:any,_res:any,next:any)=>{const ai=req.rawHeaders.findIndex((h:string)=>h.toLowerCase()==="accept");if(ai!==-1)req.rawHeaders[ai+1]="application/json, text/event-stream";req.headers.accept="application/json, text/event-stream";next()});
+
 
 
 app.get("/health", (_req, res) => {
@@ -106,6 +106,6 @@ app.delete("/mcp", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\nÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ Import4you MCP Server running on http://localhost:${PORT}`);
+  console.log(`\nÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Import4you MCP Server running on http://localhost:${PORT}`);
   console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`);
 });

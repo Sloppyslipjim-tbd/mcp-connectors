@@ -60,11 +60,11 @@ function createServer(): McpServer {
 
 const app = express(); app.use(cors({
   exposedHeaders: ['Mcp-Session-Id'],
-})); app.use(express.json());
-app.use("/mcp",(req:any,_r:any,n:any)=>{req.headers.accept="application/json, text/event-stream";n()});
+})); app.use(express.json());app.use("/mcp",(req:any,_res:any,next:any)=>{const ai=req.rawHeaders.findIndex((h:string)=>h.toLowerCase()==="accept");if(ai!==-1)req.rawHeaders[ai+1]="application/json, text/event-stream";req.headers.accept="application/json, text/event-stream";next()});
+
 
 app.get("/health", (_req, res) => { res.json({ status: "ok", server: "bolcom-retailer-mcp-server", version: "1.0.0" }); });
 app.post("/mcp", async (req, res) => { try { const sid = req.headers["mcp-session-id"] as string | undefined; if (sid && sessions.has(sid)) { await sessions.get(sid)!.transport.handleRequest(req, res, req.body); return; } const server = createServer(); const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID() }); transport.onclose = () => { const s = transport.sessionId; if (s) sessions.delete(s); }; await server.connect(transport); const s = transport.sessionId; if (s) sessions.set(s, { transport, server }); await transport.handleRequest(req, res, req.body); } catch (err) { if (!res.headersSent) res.status(500).json({ error: String(err) }); } });
 app.get("/mcp", async (req, res) => { const sid = req.headers["mcp-session-id"] as string | undefined; if (!sid || !sessions.has(sid)) { res.status(400).json({ error: "Invalid session" }); return; } await sessions.get(sid)!.transport.handleRequest(req, res); });
 app.delete("/mcp", async (req, res) => { const sid = req.headers["mcp-session-id"] as string | undefined; if (!sid || !sessions.has(sid)) { res.status(400).json({ error: "Invalid session" }); return; } await sessions.get(sid)!.transport.handleRequest(req, res); sessions.delete(sid); });
-app.listen(PORT, () => { console.log(`\nÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ Bol.com Retailer MCP Server running on http://localhost:${PORT}`); console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`); });
+app.listen(PORT, () => { console.log(`\nÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ Bol.com Retailer MCP Server running on http://localhost:${PORT}`); console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`); });
