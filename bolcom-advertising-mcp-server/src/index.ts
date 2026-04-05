@@ -80,13 +80,6 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Patch Accept header for Claude connector compatibility.
-// Claude sends Accept: application/json but the MCP SDK requires
-// both application/json and text/event-stream — returns 406 otherwise.
-app.use("/mcp", (req: any, _res: any, next: any) => {
-  req.headers.accept = "application/json, text/event-stream";
-  next();
-});
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", server: "bolcom-advertising-mcp-server", version: "1.0.0" });
@@ -105,6 +98,7 @@ app.post("/mcp", async (req, res) => {
     await server.connect(transport);
     const sid = transport.sessionId;
     if (sid) sessions.set(sid, { transport, server });
+    req.headers.accept = "application/json, text/event-stream";
     await transport.handleRequest(req, res, req.body);
   } catch (err) {
     if (!res.headersSent) res.status(500).json({ error: String(err) });
@@ -125,6 +119,6 @@ app.delete("/mcp", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\nÃ°ÂÂÂ Bol.com Advertising MCP Server running on http://localhost:${PORT}`);
+  console.log(`\nÃÂ°ÃÂÃÂÃÂ Bol.com Advertising MCP Server running on http://localhost:${PORT}`);
   console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`);
 });
