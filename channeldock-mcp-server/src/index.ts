@@ -16,7 +16,7 @@ if (!API_KEY || !API_SECRET) {
   process.exit(1);
 }
 
-console.warn("ÃÂ¢ÃÂÃÂ ÃÂ¯ÃÂ¸ÃÂ  KNOWN ISSUE: ChannelDock API may return HTML instead of JSON. Support has been emailed.");
+console.warn("ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ ÃÂÃÂ¯ÃÂÃÂ¸ÃÂÃÂ  KNOWN ISSUE: ChannelDock API may return HTML instead of JSON. Support has been emailed.");
 
 const client = new ChannelDockClient(API_KEY, API_SECRET, BASE_URL);
 
@@ -25,7 +25,7 @@ const sessions = new Map<string, { transport: StreamableHTTPServerTransport; ser
 function createServer(): McpServer {
   const server = new McpServer(
     { name: "channeldock-mcp-server", version: "1.0.0" },
-    { instructions: "ChannelDock multi-channel order/inventory management for The Brands Den B.V. Known issue: API may return HTML instead of JSON ÃÂ¢ÃÂÃÂ support has been contacted." }
+    { instructions: "ChannelDock multi-channel order/inventory management for The Brands Den B.V. Known issue: API may return HTML instead of JSON ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ support has been contacted." }
   );
 
   server.registerTool("get_orders", {
@@ -91,6 +91,7 @@ app.use(cors({
   exposedHeaders: ['Mcp-Session-Id'],
 }));
 app.use(express.json());
+app.use("/mcp",(req:any,_r:any,n:any)=>{req.headers.accept="application/json, text/event-stream";n()});
 
 
 app.get("/health", (_req, res) => {
@@ -110,7 +111,6 @@ app.post("/mcp", async (req, res) => {
     await server.connect(transport);
     const sid = transport.sessionId;
     if (sid) sessions.set(sid, { transport, server });
-    req.headers.accept = "application/json, text/event-stream";
     await transport.handleRequest(req, res, req.body);
   } catch (err) {
     if (!res.headersSent) res.status(500).json({ error: String(err) });
@@ -131,6 +131,6 @@ app.delete("/mcp", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\nÃÂ°ÃÂÃÂÃÂ ChannelDock MCP Server running on http://localhost:${PORT}`);
+  console.log(`\nÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ ChannelDock MCP Server running on http://localhost:${PORT}`);
   console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`);
 });

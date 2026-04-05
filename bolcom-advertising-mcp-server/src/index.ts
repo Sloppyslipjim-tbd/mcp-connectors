@@ -79,6 +79,7 @@ app.use(cors({
   exposedHeaders: ['Mcp-Session-Id'],
 }));
 app.use(express.json());
+app.use("/mcp",(req:any,_r:any,n:any)=>{req.headers.accept="application/json, text/event-stream";n()});
 
 
 app.get("/health", (_req, res) => {
@@ -98,7 +99,6 @@ app.post("/mcp", async (req, res) => {
     await server.connect(transport);
     const sid = transport.sessionId;
     if (sid) sessions.set(sid, { transport, server });
-    req.headers.accept = "application/json, text/event-stream";
     await transport.handleRequest(req, res, req.body);
   } catch (err) {
     if (!res.headersSent) res.status(500).json({ error: String(err) });
@@ -119,6 +119,6 @@ app.delete("/mcp", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\nÃÂ°ÃÂÃÂÃÂ Bol.com Advertising MCP Server running on http://localhost:${PORT}`);
+  console.log(`\nÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ Bol.com Advertising MCP Server running on http://localhost:${PORT}`);
   console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`);
 });
