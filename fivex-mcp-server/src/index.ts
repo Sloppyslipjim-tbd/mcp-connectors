@@ -88,7 +88,7 @@ const app=express();app.use(cors({
 
 app.get("/health",(_req,res)=>{res.json({status:"ok",server:"fivex-mcp-server",version:"1.0.3-accept-fix"})});
 
-app.post("/mcp",async(req,res)=>{try{const sessionId=req.headers["mcp-session-id"] as string|undefined;if(sessionId&&sessions.has(sessionId)){await sessions.get(sessionId)!.transport.handleRequest(req,res,req.body);return}const server=createServer();const transport=new StreamableHTTPServerTransport({sessionIdGenerator:()=>randomUUID()});transport.onclose=()=>{const sid=transport.sessionId;if(sid)sessions.delete(sid)};await server.connect(transport);const sid=transport.sessionId;if(sid)sessions.set(sid,{transport,server});await transport.handleRequest(req,res,req.body)}catch(err){if(!res.headersSent)res.status(500).json({error:String(err)})}});
+app.post("/mcp",async(req,res)=>{try{const sessionId=req.headers["mcp-session-id"] as string|undefined;if(sessionId&&sessions.has(sessionId)){await sessions.get(sessionId)!.transport.handleRequest(req,res,req.body);return}const server=createServer();const transport=new StreamableHTTPServerTransport({sessionIdGenerator:()=>randomUUID(),enableJsonResponse:true});transport.onclose=()=>{const sid=transport.sessionId;if(sid)sessions.delete(sid)};await server.connect(transport);await transport.handleRequest(req,res,req.body);const sid=transport.sessionId;if(sid)sessions.set(sid,{transport,server})}catch(err){if(!res.headersSent)res.status(500).json({error:String(err)})}});
 
 app.get("/mcp",async(req,res)=>{const sessionId=req.headers["mcp-session-id"] as string|undefined;if(!sessionId||!sessions.has(sessionId)){res.status(400).json({error:"Invalid session"});return}await sessions.get(sessionId)!.transport.handleRequest(req,res)});
 

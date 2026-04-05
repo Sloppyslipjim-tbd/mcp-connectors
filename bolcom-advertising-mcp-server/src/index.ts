@@ -94,12 +94,12 @@ app.post("/mcp", async (req, res) => {
       return;
     }
     const server = createServer();
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID() });
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID(), enableJsonResponse: true });
     transport.onclose = () => { const sid = transport.sessionId; if (sid) sessions.delete(sid); };
     await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
     const sid = transport.sessionId;
     if (sid) sessions.set(sid, { transport, server });
-    await transport.handleRequest(req, res, req.body);
   } catch (err) {
     if (!res.headersSent) res.status(500).json({ error: String(err) });
   }
