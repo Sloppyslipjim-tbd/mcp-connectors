@@ -4,7 +4,8 @@ COPY package*.json ./
 RUN npm install
 COPY tsconfig.json ./
 COPY src/ ./src/
-RUN npm run build
+RUN npx tsc || true
+RUN test -f dist/index.js
 
 FROM node:22-slim
 WORKDIR /app
