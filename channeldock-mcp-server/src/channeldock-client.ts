@@ -1,37 +1,19 @@
 /**
- * ChannelDock API Client
+ * ChannelDock API V2 Client
  *
- * FIX APPLIED (2026-04-05):
- * ROOT CAUSE: app.channeldock.com 301-redirects to channeldock.com.
- * Node.js fetch follows the redirect but DROPS custom headers (api_key, api_secret)
- * on cross-origin redirects. ChannelDock then serves HTML (login page) without auth.
- *
- * FIXES:
- * 1. Base URL changed from app.channeldock.com to channeldock.com (skip redirect)
- * 2. Added Bearer token auth as primary method (api_key/api_secret as fallback)
- * 3. Disabled automatic redirects (redirect: "manual") to detect URL issues
- * 4. Tries multiple auth strategies before failing
+ * UPDATED (2026-04-06):
+ * Migrated from V1 (app.channeldock.com/api/v1) to V2.
+ * V2 base URL: https://channeldock.com/portal/api/v2
+ * All Seller endpoints use /seller/ prefix.
+ * Auth: api_key + api_secret custom headers.
+ * Confirmed working via Make.com HTTP tests:
+ *   /seller/products ✅  /seller/orders ✅  /seller/stocklocations ✅
  */
 
 interface ApiRequestOptions {
   method?: string;
   body?: Record<string, unknown>;
-}
-
-interface OrderResponse {
-  id: string;
-  [key: string]: unknown;
-}
-
-interface InventoryResponse {
-  products?: unknown[];
-  inventory?: unknown[];
-  [key: string]: unknown;
-}
-
-interface StockResponse {
-  stock?: unknown[];
-  [key: string]: unknown;
+  params?: Record<string, string>;
 }
 
 export class ChannelDockClient {
@@ -39,51 +21,25 @@ export class ChannelDockClient {
   private apiSecret: string;
   private baseUrl: string;
   private maxRetries = 3;
-  private retryDelay = 1000; // ms
+  private retryDelay = 1000;
 
   constructor(apiKey: string, apiSecret: string, baseUrl: string) {
     this.apiKey = apiKey;
     this.apiSecret = apiSecret;
-    this.baseUrl = baseUrl.replace(/\/$/, ""); // Remove trailing slash
+    this.baseUrl = baseUrl.replace(/\/$/, "");
   }
 
   private async sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  private isHtmlResponse(contentType: string | null): boolean {
-    return contentType?.includes("text/html") || false;
-  }
-
-  /**
-   * Try multiple auth strategies in order:
-   * 1. Bearer token (api_key as token) — most common for modern APIs
-   * 2. Custom headers (api_key + api_secret) — original implementation
-   * 3. Query params (?api_key=...&api_secret=...) — some APIs use this
-   */
-  private getAuthStrategies(): Record<string, string>[] {
-    return [
-      // Strategy 1: Bearer token
-      {
-        "Authorization": `Bearer ${this.apiKey}`,
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-      },
-      // Strategy 2: Custom headers (original)
-      {
-        "api_key": this.apiKey,
-        "api_secret": this.apiSecret,
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-      },
-      // Strategy 3: X-Api-Key header pattern
-      {
-        "X-Api-Key": this.apiKey,
-        "X-Api-Secret": this.apiSecret,
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-      },
-    ];
+  private getHeaders(): Record<string, string> {
+    return {
+      "api_key": this.apiKey,
+      "api_secret": this.apiSecret,
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    };
   }
 
   private async request<T>(
@@ -91,197 +47,142 @@ export class ChannelDockClient {
     options: ApiRequestOptions = {}
   ): Promise<T> {
     const method = options.method || "GET";
-    const url = `${this.baseUrl}${endpoint}`;
-    const authStrategies = this.getAuthStrategies();
+    let url = `${this.baseUrl}${endpoint}`;
 
+    if (options.params) {
+      const qs = new URLSearchParams(options.params).toString();
+      if (qs) url += `?${qs}`;
+    }
+
+    const headers = this.getHeaders();
     let lastError: Error | null = null;
 
-    // Try each auth strategy
-    for (let stratIdx = 0; stratIdx < authStrategies.length; stratIdx++) {
-      const headers = authStrategies[stratIdx];
-
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
+        console.log(`[ChannelDock] ${method} ${url} (attempt ${attempt + 1})`);
+
         const response = await fetch(url, {
           method,
           headers,
-          body: options.body ? JSON.stringify(options.body) : undefined,
-          redirect: "manual", // Don't auto-follow redirects (they strip headers)
-        });
-
-        // Handle redirects manually — preserve headers
-        if (response.status === 301 || response.status === 302 || response.status === 307 || response.status === 308) {
-          const redirectUrl = response.headers.get("location");
-          if (redirectUrl) {
-            console.log(`Redirect detected: ${url} → ${redirectUrl}. Following with headers preserved.`);
-            const redirectResponse = await fetch(redirectUrl, {
-              method,
-              headers, // Keep same headers!
-              body: options.body ? JSON.stringify(options.body) : undefined,
-              redirect: "manual",
-            });
-
-            const contentType = redirectResponse.headers.get("content-type");
-            if (this.isHtmlResponse(contentType)) {
-              console.log(`Auth strategy ${stratIdx + 1} returned HTML after redirect, trying next...`);
-              lastError = new Error(`Auth strategy ${stratIdx + 1} failed: HTML response after redirect to ${redirectUrl}`);
-              continue;
-            }
-
-            if (!redirectResponse.ok) {
-              const error = await redirectResponse.text();
-              lastError = new Error(`API Error ${redirectResponse.status} (after redirect): ${error || redirectResponse.statusText}`);
-              continue;
-            }
-
-            return await redirectResponse.json() as T;
-          }
-        }
-
-        const contentType = response.headers.get("content-type");
-
-        if (this.isHtmlResponse(contentType)) {
-          console.log(`Auth strategy ${stratIdx + 1} returned HTML for ${endpoint}, trying next...`);
-          lastError = new Error(`Auth strategy ${stratIdx + 1} failed: HTML response from ${url}`);
-          continue; // Try next auth strategy instead of throwing immediately
-        }
-
-        if (!response.ok) {
-          const error = await response.text();
-          lastError = new Error(`API Error ${response.status}: ${error || response.statusText}`);
-          // 401/403 means wrong auth — try next strategy
-          if (response.status === 401 || response.status === 403) {
-            console.log(`Auth strategy ${stratIdx + 1} returned ${response.status}, trying next...`);
-            continue;
-          }
-          throw lastError;
-        }
-
-        const data = await response.json();
-        console.log(`✅ Auth strategy ${stratIdx + 1} succeeded for ${endpoint}`);
-        return data as T;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        if (stratIdx < authStrategies.length - 1) {
-          console.log(`Auth strategy ${stratIdx + 1} failed: ${lastError.message}. Trying next...`);
-          continue;
-        }
-      }
-    }
-
-    // All strategies failed — now retry with exponential backoff using strategy 1 (Bearer)
-    const primaryHeaders = authStrategies[0];
-    for (let attempt = 0; attempt < this.maxRetries; attempt++) {
-      try {
-        const response = await fetch(url, {
-          method,
-          headers: primaryHeaders,
           body: options.body ? JSON.stringify(options.body) : undefined,
           redirect: "follow",
         });
 
         const contentType = response.headers.get("content-type");
-        if (this.isHtmlResponse(contentType)) {
+
+        if (contentType?.includes("text/html")) {
           throw new Error(
-            `ChannelDock API returned HTML instead of JSON on all auth strategies. ` +
-              `Endpoint: "${endpoint}", URL: "${url}". ` +
-              `Content-Type: ${contentType}. ` +
-              `Check: 1) Base URL is correct  2) API key is valid  3) Endpoint path exists`
+            `ChannelDock returned HTML instead of JSON. URL: "${url}". ` +
+            `This usually means the endpoint path is wrong or auth failed.`
           );
         }
 
         if (!response.ok) {
-          const error = await response.text();
-          throw new Error(`API Error ${response.status}: ${error || response.statusText}`);
+          const errorBody = await response.text();
+          throw new Error(`ChannelDock API ${response.status}: ${errorBody || response.statusText}`);
         }
 
-        return await response.json() as T;
+        const data = await response.json();
+        console.log(`[ChannelDock] ✅ ${method} ${endpoint} — success`);
+        return data as T;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        if (lastError.message.includes("returned HTML")) throw lastError;
 
-        if (attempt < this.maxRetries - 1) {
+        // Don't retry HTML responses (wrong endpoint) or 4xx errors
+        if (lastError.message.includes("HTML instead of JSON")) throw lastError;
+        if (lastError.message.match(/ChannelDock API 4\d\d/)) throw lastError;
+
+        if (attempt < this.maxRetries) {
           const delay = this.retryDelay * Math.pow(2, attempt);
-          console.log(`Retry ${attempt + 1}/${this.maxRetries} after ${delay}ms`);
+          console.log(`[ChannelDock] Retry ${attempt + 1}/${this.maxRetries} in ${delay}ms — ${lastError.message}`);
           await this.sleep(delay);
         }
       }
     }
 
-    throw lastError || new Error("Failed to fetch from ChannelDock API after all auth strategies and retries");
+    throw lastError || new Error("ChannelDock API request failed after all retries");
   }
 
-  async getOrders(page?: number, status?: string): Promise<OrderResponse[]> {
-    let endpoint = "/orders";
+  // --- Seller Endpoints (V2) ---
 
-    const params = new URLSearchParams();
-    if (page !== undefined) params.append("page", String(page));
-    if (status) params.append("status", status);
+  async getOrders(page?: number, status?: string): Promise<unknown[]> {
+    const params: Record<string, string> = {};
+    if (page !== undefined) params.page = String(page);
+    if (status) params.status = status;
 
-    if (params.size > 0) {
-      endpoint += `?${params.toString()}`;
-    }
-
-    const response = await this.request<{ orders?: OrderResponse[]; [key: string]: unknown }>(
-      endpoint
-    );
-    return response.orders || (Array.isArray(response) ? response : []);
+    const response = await this.request<unknown>("/seller/orders", { params });
+    // V2 may return array directly or wrapped in { orders: [...] }
+    if (Array.isArray(response)) return response;
+    const obj = response as Record<string, unknown>;
+    if (Array.isArray(obj.orders)) return obj.orders;
+    if (Array.isArray(obj.data)) return obj.data;
+    return [obj]; // Single result fallback
   }
 
-  async getInventory(): Promise<InventoryResponse> {
-    // Try both /inventory and /products endpoints as exact endpoint is uncertain
-    try {
-      return await this.request<InventoryResponse>("/inventory");
-    } catch (error) {
-      console.log(
-        "Failed to fetch /inventory, trying /products endpoint",
-        error
-      );
-      return await this.request<InventoryResponse>("/products");
-    }
+  async getProducts(page?: number): Promise<unknown[]> {
+    const params: Record<string, string> = {};
+    if (page !== undefined) params.page = String(page);
+
+    const response = await this.request<unknown>("/seller/products", { params });
+    if (Array.isArray(response)) return response;
+    const obj = response as Record<string, unknown>;
+    if (Array.isArray(obj.products)) return obj.products;
+    if (Array.isArray(obj.data)) return obj.data;
+    return [obj];
   }
 
-  async getStockLevels(): Promise<StockResponse> {
-    const response = await this.request<StockResponse>("/stock");
-    return response;
+  async getStockLocations(): Promise<unknown> {
+    return await this.request<unknown>("/seller/stocklocations");
+  }
+
+  async getShipments(page?: number): Promise<unknown[]> {
+    const params: Record<string, string> = {};
+    if (page !== undefined) params.page = String(page);
+
+    const response = await this.request<unknown>("/seller/shipments", { params });
+    if (Array.isArray(response)) return response;
+    const obj = response as Record<string, unknown>;
+    if (Array.isArray(obj.shipments)) return obj.shipments;
+    if (Array.isArray(obj.data)) return obj.data;
+    return [obj];
+  }
+
+  async getReturns(page?: number): Promise<unknown[]> {
+    const params: Record<string, string> = {};
+    if (page !== undefined) params.page = String(page);
+
+    const response = await this.request<unknown>("/seller/returns", { params });
+    if (Array.isArray(response)) return response;
+    const obj = response as Record<string, unknown>;
+    if (Array.isArray(obj.returns)) return obj.returns;
+    if (Array.isArray(obj.data)) return obj.data;
+    return [obj];
   }
 
   async getOosProducts(): Promise<Record<string, unknown>[]> {
-    try {
-      // Try to get stock levels
-      const stockData = await this.getStockLevels() as Record<string, unknown>;
-      const stock = (stockData as Record<string, unknown>).stock ?? [];
+    // Get stock locations data and filter for out-of-stock items
+    const stockData = await this.getStockLocations() as Record<string, unknown>;
 
-      // Filter for out-of-stock items (stock <= 0) for FFC (fulfillment center)
-      const stockArr = Array.isArray(stock) ? stock : [];
-      const oosItems: Record<string, unknown>[] = stockArr.filter(
-        (item: Record<string, unknown>) => {
-          const quantity = item.quantity as number | undefined;
-          return quantity !== undefined && quantity <= 0;
-        }
-      );
+    // Try common response shapes
+    const items = stockData.stock ?? stockData.data ?? stockData.stocklocations ?? stockData;
+    const stockArr = Array.isArray(items) ? items : [];
 
-      return oosItems;
-    } catch (error) {
-      console.log("Error fetching OOS products from stock", error);
-
-      // Fallback: try inventory endpoint
-      try {
-        const inventory = await this.getInventory() as Record<string, unknown>;
-        const products = (inventory as Record<string, unknown>).products ?? [];
-
-        const productsArr = Array.isArray(products) ? products : [];
-        const oosItems: Record<string, unknown>[] = productsArr.filter(
-          (item: Record<string, unknown>) => {
-            const quantity = item.stock as number | undefined;
-            return quantity !== undefined && quantity <= 0;
-          }
-        );
-
-        return oosItems;
-      } catch (fallbackError) {
-        console.error("Failed to fetch OOS products from both endpoints");
-        throw fallbackError;
+    const oosItems: Record<string, unknown>[] = stockArr.filter(
+      (item: Record<string, unknown>) => {
+        const qty = (item.quantity ?? item.stock ?? item.available) as number | undefined;
+        return qty !== undefined && qty <= 0;
       }
-    }
+    );
+
+    return oosItems;
+  }
+
+  // Keep backward compatibility aliases
+  async getInventory(): Promise<unknown> {
+    return await this.getProducts();
+  }
+
+  async getStockLevels(): Promise<unknown> {
+    return await this.getStockLocations();
   }
 }

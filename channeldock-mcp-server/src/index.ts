@@ -9,14 +9,14 @@ import { ChannelDockClient } from "./channeldock-client.js";
 const PORT = parseInt(process.env.PORT ?? "3005", 10);
 const API_KEY = process.env.CHANNELDOCK_API_KEY ?? "";
 const API_SECRET = process.env.CHANNELDOCK_API_SECRET ?? "";
-const BASE_URL = process.env.CHANNELDOCK_BASE_URL ?? "https://channeldock.com/api/v1";
+const BASE_URL = process.env.CHANNELDOCK_BASE_URL ?? "https://channeldock.com/portal/api/v2";
 
 if (!API_KEY || !API_SECRET) {
   console.error("Missing CHANNELDOCK_API_KEY or CHANNELDOCK_API_SECRET env vars.");
   process.exit(1);
 }
 
-console.log("ℹ️  ChannelDock MCP Server v1.0.1 — redirect fix applied, multi-auth strategy enabled.");
+console.log("ℹ️  ChannelDock MCP Server v2.0.0 — migrated to V2 API (portal/api/v2/seller/).");
 
 const client = new ChannelDockClient(API_KEY, API_SECRET, BASE_URL);
 
@@ -24,13 +24,13 @@ const sessions = new Map<string, { transport: StreamableHTTPServerTransport; ser
 
 function createServer(): McpServer {
   const server = new McpServer(
-    { name: "channeldock-mcp-server", version: "1.0.0" },
+    { name: "channeldock-mcp-server", version: "2.0.0" },
     { instructions: "ChannelDock multi-channel order/inventory management for The Brands Den B.V. Provides stock levels, inventory, orders, and out-of-stock alerts." }
   );
 
   server.registerTool("get_orders", {
     title: "Get ChannelDock Orders",
-    description: "Fetch orders from ChannelDock. Note: API may return HTML instead of JSON (known issue).",
+    description: "Fetch orders from ChannelDock V2 API (/seller/orders).",
     inputSchema: {
       page: z.number().optional().describe("Page number"),
       status: z.string().optional().describe("Filter by order status"),
@@ -45,12 +45,14 @@ function createServer(): McpServer {
   });
 
   server.registerTool("get_inventory", {
-    title: "Get ChannelDock Inventory",
-    description: "Fetch full product inventory from ChannelDock.",
-    inputSchema: {},
-  }, async () => {
+    title: "Get ChannelDock Products",
+    description: "Fetch full product catalog from ChannelDock V2 API (/seller/products).",
+    inputSchema: {
+      page: z.number().optional().describe("Page number"),
+    },
+  }, async ({ page }) => {
     try {
-      const result = await client.getInventory();
+      const result = await client.getProducts(page);
       return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
@@ -58,12 +60,12 @@ function createServer(): McpServer {
   });
 
   server.registerTool("get_stock_levels", {
-    title: "Get ChannelDock Stock Levels",
-    description: "Fetch stock levels per product from ChannelDock.",
+    title: "Get ChannelDock Stock Locations",
+    description: "Fetch stock locations and levels from ChannelDock V2 API (/seller/stocklocations).",
     inputSchema: {},
   }, async () => {
     try {
-      const result = await client.getStockLevels();
+      const result = await client.getStockLocations();
       return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
@@ -72,7 +74,7 @@ function createServer(): McpServer {
 
   server.registerTool("get_oos_products", {
     title: "Get Out-of-Stock Products",
-    description: "Get products that are out of stock in ChannelDock (FFC). Used for Daily OPS and Heads-Up alerts.",
+    description: "Get products that are out of stock in ChannelDock. Used for Daily OPS and Heads-Up alerts.",
     inputSchema: {},
   }, async () => {
     try {
