@@ -30,7 +30,7 @@ const sessions = new Map<string, { transport: StreamableHTTPServerTransport; ser
 function createServer(): McpServer {
   const server = new McpServer(
     { name: "mirakl-mcp-server", version: "1.0.0" },
-    { instructions: "Mirakl marketplace connector for The Brands Den B.V. Covers Decathlon, ANWB, and MediaMarkt NL. Known issue: 401 errors reported â auth tokens may need verification." }
+    { instructions: "Mirakl marketplace connector for The Brands Den B.V. Covers Decathlon, ANWB, and MediaMarkt NL. Known issue: 401 errors reported Ã¢ÂÂ auth tokens may need verification." }
   );
 
   const marketplaceField = z.string().describe("Marketplace: decathlon, anwb, or mediamarkt");
@@ -100,6 +100,14 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Patch Accept header for Claude connector compatibility.
+// Claude sends Accept: application/json but the MCP SDK requires
+// both application/json and text/event-stream — returns 406 otherwise.
+app.use("/mcp", (req: any, _res: any, next: any) => {
+  req.headers.accept = "application/json, text/event-stream";
+  next();
+});
+
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", server: "mirakl-mcp-server", version: "1.0.0" });
 });
@@ -137,6 +145,6 @@ app.delete("/mcp", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\nð Mirakl MCP Server running on http://localhost:${PORT}`);
+  console.log(`\nÃ°ÂÂÂ Mirakl MCP Server running on http://localhost:${PORT}`);
   console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`);
 });

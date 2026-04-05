@@ -15,7 +15,7 @@ if (!CLIENT_ID) {
   process.exit(1);
 }
 
-console.warn("â ï¸  Import4you API endpoints are provisional â verify with I4Y documentation.");
+console.warn("Ã¢ÂÂ Ã¯Â¸Â  Import4you API endpoints are provisional Ã¢ÂÂ verify with I4Y documentation.");
 
 const client = new Import4youClient(BASE_URL, CLIENT_ID);
 
@@ -67,6 +67,14 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Patch Accept header for Claude connector compatibility.
+// Claude sends Accept: application/json but the MCP SDK requires
+// both application/json and text/event-stream — returns 406 otherwise.
+app.use("/mcp", (req: any, _res: any, next: any) => {
+  req.headers.accept = "application/json, text/event-stream";
+  next();
+});
+
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", server: "import4you-mcp-server", version: "1.0.0" });
 });
@@ -104,6 +112,6 @@ app.delete("/mcp", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\nð Import4you MCP Server running on http://localhost:${PORT}`);
+  console.log(`\nÃ°ÂÂÂ Import4you MCP Server running on http://localhost:${PORT}`);
   console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`);
 });

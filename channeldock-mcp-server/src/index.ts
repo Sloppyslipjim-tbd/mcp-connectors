@@ -16,7 +16,7 @@ if (!API_KEY || !API_SECRET) {
   process.exit(1);
 }
 
-console.warn("â ï¸  KNOWN ISSUE: ChannelDock API may return HTML instead of JSON. Support has been emailed.");
+console.warn("Ã¢ÂÂ Ã¯Â¸Â  KNOWN ISSUE: ChannelDock API may return HTML instead of JSON. Support has been emailed.");
 
 const client = new ChannelDockClient(API_KEY, API_SECRET, BASE_URL);
 
@@ -25,7 +25,7 @@ const sessions = new Map<string, { transport: StreamableHTTPServerTransport; ser
 function createServer(): McpServer {
   const server = new McpServer(
     { name: "channeldock-mcp-server", version: "1.0.0" },
-    { instructions: "ChannelDock multi-channel order/inventory management for The Brands Den B.V. Known issue: API may return HTML instead of JSON â support has been contacted." }
+    { instructions: "ChannelDock multi-channel order/inventory management for The Brands Den B.V. Known issue: API may return HTML instead of JSON Ã¢ÂÂ support has been contacted." }
   );
 
   server.registerTool("get_orders", {
@@ -92,6 +92,14 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Patch Accept header for Claude connector compatibility.
+// Claude sends Accept: application/json but the MCP SDK requires
+// both application/json and text/event-stream — returns 406 otherwise.
+app.use("/mcp", (req: any, _res: any, next: any) => {
+  req.headers.accept = "application/json, text/event-stream";
+  next();
+});
+
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", server: "channeldock-mcp-server", version: "1.0.0" });
 });
@@ -129,6 +137,6 @@ app.delete("/mcp", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\nð ChannelDock MCP Server running on http://localhost:${PORT}`);
+  console.log(`\nÃ°ÂÂÂ ChannelDock MCP Server running on http://localhost:${PORT}`);
   console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`);
 });
