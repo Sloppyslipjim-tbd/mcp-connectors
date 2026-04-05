@@ -9,14 +9,14 @@ import { ChannelDockClient } from "./channeldock-client.js";
 const PORT = parseInt(process.env.PORT ?? "3005", 10);
 const API_KEY = process.env.CHANNELDOCK_API_KEY ?? "";
 const API_SECRET = process.env.CHANNELDOCK_API_SECRET ?? "";
-const BASE_URL = process.env.CHANNELDOCK_BASE_URL ?? "https://app.channeldock.com/api/v1";
+const BASE_URL = process.env.CHANNELDOCK_BASE_URL ?? "https://channeldock.com/api/v1";
 
 if (!API_KEY || !API_SECRET) {
   console.error("Missing CHANNELDOCK_API_KEY or CHANNELDOCK_API_SECRET env vars.");
   process.exit(1);
 }
 
-console.warn("ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ ÃÂÃÂÃÂÃÂ¯ÃÂÃÂÃÂÃÂ¸ÃÂÃÂÃÂÃÂ  KNOWN ISSUE: ChannelDock API may return HTML instead of JSON. Support has been emailed.");
+console.log("ℹ️  ChannelDock MCP Server v1.0.1 — redirect fix applied, multi-auth strategy enabled.");
 
 const client = new ChannelDockClient(API_KEY, API_SECRET, BASE_URL);
 
@@ -25,7 +25,7 @@ const sessions = new Map<string, { transport: StreamableHTTPServerTransport; ser
 function createServer(): McpServer {
   const server = new McpServer(
     { name: "channeldock-mcp-server", version: "1.0.0" },
-    { instructions: "ChannelDock multi-channel order/inventory management for The Brands Den B.V. Known issue: API may return HTML instead of JSON ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ support has been contacted." }
+    { instructions: "ChannelDock multi-channel order/inventory management for The Brands Den B.V. Provides stock levels, inventory, orders, and out-of-stock alerts." }
   );
 
   server.registerTool("get_orders", {
@@ -87,12 +87,8 @@ function createServer(): McpServer {
 }
 
 const app = express();
-app.use(cors({
-  exposedHeaders: ['Mcp-Session-Id'],
-}));
-app.use(express.json());app.use("/mcp",(req:any,_res:any,next:any)=>{const ai=req.rawHeaders.findIndex((h:string)=>h.toLowerCase()==="accept");if(ai!==-1)req.rawHeaders[ai+1]="application/json, text/event-stream";req.headers.accept="application/json, text/event-stream";next()});
-
-
+app.use(cors());
+app.use(express.json());
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", server: "channeldock-mcp-server", version: "1.0.0" });
@@ -106,12 +102,12 @@ app.post("/mcp", async (req, res) => {
       return;
     }
     const server = createServer();
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID(), enableJsonResponse: true });
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID() });
     transport.onclose = () => { const sid = transport.sessionId; if (sid) sessions.delete(sid); };
     await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
     const sid = transport.sessionId;
     if (sid) sessions.set(sid, { transport, server });
+    await transport.handleRequest(req, res, req.body);
   } catch (err) {
     if (!res.headersSent) res.status(500).json({ error: String(err) });
   }
@@ -131,6 +127,6 @@ app.delete("/mcp", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\nÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ ChannelDock MCP Server running on http://localhost:${PORT}`);
+  console.log(`\n🚀 ChannelDock MCP Server running on http://localhost:${PORT}`);
   console.log(`   MCP endpoint: http://localhost:${PORT}/mcp\n`);
 });

@@ -1,13 +1,13 @@
 version: "3.8"
 
-# Master Docker Compose - All Buddy MCP Connectors
+# Master Docker Compose — All Buddy MCP Connectors
 # The Brands Den B.V.
 #
 # Usage:
-#   docker-compose up -d           # Start all connectors
-#   docker-compose up -d fivex     # Start just FiveX
-#   docker-compose logs -f         # View logs
-#   docker-compose down            # Stop all
+#   docker-compose up -d          # Start all connectors
+#   docker-compose up -d fivex    # Start just FiveX
+#   docker-compose logs -f        # View logs
+#   docker-compose down           # Stop all
 
 services:
   fivex:
@@ -15,53 +15,115 @@ services:
     container_name: fivex-mcp
     ports:
       - "3001:3001"
-    env_file: ./fivex-mcp-server/.env
+    environment:
+      - FIVEX_API_KEY=a37a68ecda4f2f16933ace52d301baf8
+      - FIVEX_API_SECRET=363bdd0830fe1337ff4eae8a10dc1d6d1566e53578cd417a152667aaf532b751
+      - FIVEX_BASE_URL=https://app.fivex.nl/api/v1
+      - PORT=3001
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   bolcom-retailer:
     build: ./bolcom-retailer-mcp-server
     container_name: bolcom-retailer-mcp
     ports:
       - "3002:3002"
-    env_file: ./bolcom-retailer-mcp-server/.env
+    environment:
+      - BOLCOM_CLIENT_ID=b174cd38-353a-4719-9f4d-6b6423039876
+      - BOLCOM_CLIENT_SECRET=YCiRBFv2dGZHp2Dvh0OAKv45uYnr+nYJ13(Z!TxW!P)Kb(?RPJUNURh5rAFMG6yA
+      - PORT=3002
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   returnless:
     build: ./returnless-mcp-server
     container_name: returnless-mcp
     ports:
       - "3003:3003"
-    env_file: ./returnless-mcp-server/.env
+    environment:
+      - RETURNLESS_BEARER_TOKEN=XXZObNmzya7lmjQ57IvX0fw5G29wNMQhWNmZmu39c54ea8d8
+      - RETURNLESS_BASE_URL=https://api-v2.returnless.com/2025-01/
+      - PORT=3003
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   mirakl:
     build: ./mirakl-mcp-server
     container_name: mirakl-mcp
     ports:
       - "3004:3004"
-    env_file: ./mirakl-mcp-server/.env
+    environment:
+      - MIRAKL_DECATHLON_API_KEY=3c188191-be35-44e5-9292-725d7e693a15
+      - MIRAKL_DECATHLON_BASE_URL=https://marketplace-decathlon-eu.mirakl.net
+      - MIRAKL_ANWB_API_KEY=765a13de-c44a-46bb-ba44-c4a04ddb1917
+      - MIRAKL_ANWB_BASE_URL=https://anwbnl-prod.mirakl.net
+      - MIRAKL_MEDIAMARKT_API_KEY=c06b6458-1773-402c-98fb-74c1862e1564
+      - MIRAKL_MEDIAMARKT_BASE_URL=https://mediamarktsaturn.mirakl.net
+      - PORT=3004
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   channeldock:
     build: ./channeldock-mcp-server
     container_name: channeldock-mcp
     ports:
       - "3005:3005"
-    env_file: ./channeldock-mcp-server/.env
+    environment:
+      - CHANNELDOCK_API_KEY=574b94b86177db4bdbcbd06cc2b17c6f6cc31950d75e75bee6862e2e0b1c173d
+      - CHANNELDOCK_API_SECRET=e106fa7dea12cccf3cdd58f8b3668f5dc6b05b4625fe8701aea8736b17527f43
+      - CHANNELDOCK_BASE_URL=https://channeldock.com/api/v1
+      - PORT=3005
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   bolcom-advertising:
     build: ./bolcom-advertising-mcp-server
     container_name: bolcom-advertising-mcp
     ports:
       - "3006:3006"
-    env_file: ./bolcom-advertising-mcp-server/.env
+    environment:
+      - BOLCOM_AD_CLIENT_ID=f21f08a0-cfca-41aa-83b7-cf3f2879a8c9
+      - BOLCOM_AD_CLIENT_SECRET=EDHWQEA+GeZuvuG(zrgT2Y4qSbT@g)vG6HxcS63HKdBBR?GLb5oj+THP0h!D5n2G
+      - PORT=3006
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3006/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   import4you:
     build: ./import4you-mcp-server
     container_name: import4you-mcp
     ports:
       - "3007:3007"
-    env_file: ./import4you-mcp-server/.env
+    environment:
+      - I4Y_CLIENT_ID=IvPMWt4yUDIdjWpv6QwB
+      - I4Y_BASE_URL=https://api.import4you.nl/v1
+      - PORT=3007
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3007/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
