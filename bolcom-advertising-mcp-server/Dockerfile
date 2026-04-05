@@ -1,16 +1,16 @@
-FROM node:22-alpine
-
+FROM node:22-slim AS builder
 WORKDIR /app
-
 COPY package*.json ./
 RUN npm install
-
 COPY tsconfig.json ./
-COPY src/ src/
-
+COPY src/ ./src/
 RUN npm run build
 
-ENV PORT=3006
+FROM node:22-slim
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --omit=dev
+COPY --from=builder /app/dist ./dist
 EXPOSE 3006
-
-CMD ["npm", "start"]
+ENV PORT=3006
+CMD ["node", "dist/index.js"]

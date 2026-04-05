@@ -1,13 +1,16 @@
-FROM node:22-alpine
-
+FROM node:22-slim AS builder
 WORKDIR /app
-
 COPY package*.json ./
+RUN npm install
+COPY tsconfig.json ./
+COPY src/ ./src/
+RUN npm run build
 
-RUN npm ci --omit=dev
-
-COPY dist/ ./dist/
-
+FROM node:22-slim
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --omit=dev
+COPY --from=builder /app/dist ./dist
 EXPOSE 3005
-
+ENV PORT=3005
 CMD ["node", "dist/index.js"]
